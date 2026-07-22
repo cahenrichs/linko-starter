@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"net"
 	"net/http"
 	"os"
@@ -47,13 +48,20 @@ func (s *server) start() error {
 	if err != nil {
 		return err
 	}
+	tcpAddr, ok := ln.Addr().(*net.TCPAddr)
+	if !ok {
+		return fmt.Errorf("listener address is not a TCP address")
+	}
+	log.Printf("Linko is running on http://localhost:%d\n", tcpAddr.Port)
 	if err := s.httpServer.Serve(ln); !errors.Is(err, http.ErrServerClosed) {
 		return err
 	}
 	return nil
+
 }
 
 func (s *server) shutdown(ctx context.Context) error {
+	log.Printf("Linko is shutting down\n")
 	return s.httpServer.Shutdown(ctx)
 }
 
