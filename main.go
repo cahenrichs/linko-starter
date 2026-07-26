@@ -27,12 +27,23 @@ func main() {
 }
 
 func run(ctx context.Context, cancel context.CancelFunc, httpPort int, dataDir string) int {
-	st, err := store.New(dataDir)
+	//standard logger
+	standard := log.New(os.Stderr, "DEBUG: ", log.LstdFlags)
+
+	//access log creation
+	create, err := os.Create("linko.access.log")
+	if err != nil {
+		standard.Printf("failed to create store: %v\n", err)
+		return 1
+	}
+	access := log.New(create, "INFO: ", log.LstdFlags)
+
+	st, err := store.New(dataDir, standard)
 	if err != nil {
 		logger.Printf("failed to create store: %v\n", err)
 		return 1
 	}
-	s := newServer(*st, httpPort, cancel)
+	s := newServer(*st, httpPort, cancel, access)
 	var serverErr error
 	go func() {
 		serverErr = s.start()
@@ -43,11 +54,11 @@ func run(ctx context.Context, cancel context.CancelFunc, httpPort int, dataDir s
 	defer cancel()
 
 	if err := s.shutdown(shutdownCtx); err != nil {
-		logger.Printf("failed to shutdown server: %v\n", err)
+		access.Printf("failed to shutdown server: %v\n", err)
 		return 1
 	}
 	if serverErr != nil {
-		logger.Printf("server error: %v\n", serverErr)
+		access.Printf("server error: %v\n", serverErr)
 		return 1
 	}
 	return 0
