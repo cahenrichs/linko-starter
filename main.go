@@ -4,6 +4,8 @@ import (
 	"bufio"
 	"context"
 	"flag"
+	"fmt"
+	"io"
 	"log"
 	"os"
 	"os/signal"
@@ -27,24 +29,17 @@ func main() {
 	os.Exit(status)
 }
 
-func initializeLogger() *log.Logger {
-	//initializeLogger
-	lookup, isSet := os.LookupEnv("LINKO_LOG_FILE")
-
-	if isSet {
-		openfile, err := os.OpenFile(lookup, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0o644)
-		if err != nil {
-			log.Fatalf("failed to open log file: %v", err)
-		}
-		multi := bufio.NewWriterSize(openfile, 8192)
-		return log.New(multi, "", log.LstdFlags)
-	}
-	return log.New(os.Stderr, "", log.LstdFlags)
-
-}
-
 func run(ctx context.Context, cancel context.CancelFunc, httpPort int, dataDir string) int {
-	logger := initializeLogger()
+	logger, closeLogger, err := initializeLogger(os.Getenv("LINKO_LOG_FILE"))
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to initialize logger: %v\n", err)
+		return 1
+	}
+	defer func() {
+		if err := closeLogger(); err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to close logger: %v\n", err)
+		}
+	}()
 	st, err := store.New(dataDir, logger)
 	if err != nil {
 		logger.Printf("failed to create store: %v\n", err)
@@ -69,4 +64,31 @@ func run(ctx context.Context, cancel context.CancelFunc, httpPort int, dataDir s
 		return 1
 	}
 	return 0
+}
+
+type closeFunc func() error
+
+func initializeLogger(logFile string) (*log.Logger, closeFunc, error) {
+	if logFile != "" {
+		file, err := os.OpenFile(logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0o644)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to open log file: %w", err)
+		}
+		bufferedFile := bufio.NewWriterSize(file, 8192)
+		multiWriter := io.MultiWriter(os.Stderr, bufferedFile)
+		close := func() error {
+			if err := bufferedFile.Flush(); err != nil {
+				return fmt.Errorf("failed to flush log file: %w", err)
+			}
+			if err := file.Close(); err != nil {
+				return fmt.Errorf("failed to close log file: %w", err)
+			}
+			return nil
+		}
+		return log.New(multiWriter, "", log.LstdFlags), close, nil
+	}
+	close := func() error {
+		return nil
+	}
+	return log.New(os.Stderr, "", log.LstdFlags), close, nil
 }
