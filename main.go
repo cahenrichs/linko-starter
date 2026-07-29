@@ -5,7 +5,6 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"io"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -75,7 +74,15 @@ func initializeLogger(logFile string) (*slog.Logger, closeFunc, error) {
 			return nil, nil, fmt.Errorf("failed to open log file: %w", err)
 		}
 		bufferedFile := bufio.NewWriterSize(file, 8192)
-		multiWriter := io.MultiWriter(os.Stderr, bufferedFile)
+
+		debugHandler := slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
+			Level: slog.LevelDebug,
+		})
+
+		infoLogger := slog.NewTextHandler(bufferedFile, &slog.HandlerOptions{
+			Level: slog.LevelInfo,
+		})
+
 		close := func() error {
 			if err := bufferedFile.Flush(); err != nil {
 				return fmt.Errorf("failed to flush log file: %w", err)
@@ -85,10 +92,12 @@ func initializeLogger(logFile string) (*slog.Logger, closeFunc, error) {
 			}
 			return nil
 		}
-		return slog.New(slog.NewTextHandler(multiWriter, nil)), close, nil
+		return slog.New(slog.NewMultiHandler(debugHandler, infoLogger)), close, nil
 	}
 	close := func() error {
 		return nil
 	}
-	return slog.New(slog.NewTextHandler(os.Stderr, nil)), close, nil
+	return slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
+		Level: slog.LevelDebug,
+	})), close, nil
 }
