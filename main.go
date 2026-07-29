@@ -14,7 +14,7 @@ import (
 	"boot.dev/linko/internal/store"
 )
 
-var logger = slog.New(slog.NewTextHandler(os.Stderr, nil))
+var logger = slog.New(slog.NewJSONHandler(os.Stderr, nil))
 
 func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -75,11 +75,11 @@ func initializeLogger(logFile string) (*slog.Logger, closeFunc, error) {
 		}
 		bufferedFile := bufio.NewWriterSize(file, 8192)
 
-		debugHandler := slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
+		debugHandler := slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{
 			Level: slog.LevelDebug,
 		})
 
-		infoLogger := slog.NewTextHandler(bufferedFile, &slog.HandlerOptions{
+		infoLogger := slog.NewJSONHandler(bufferedFile, &slog.HandlerOptions{
 			Level: slog.LevelInfo,
 		})
 

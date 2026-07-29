@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
 
 	"golang.org/x/crypto/bcrypt"
@@ -53,7 +54,9 @@ func (s *server) validatePassword(password, stored string) (bool, error) {
 		return false, nil
 	}
 	if err != nil {
-		logger.Info(fmt.Sprintf("error validating password: %v\n", err))
+		logger.Info("error validating password",
+			slog.Any("error", err),
+		)
 		return false, err
 	}
 	return true, nil
