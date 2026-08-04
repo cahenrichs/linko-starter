@@ -72,7 +72,7 @@ func (s *server) handlerRedirect(w http.ResponseWriter, r *http.Request) {
 		if errors.Is(err, store.ErrNotFound) {
 			http.Error(w, "not found", http.StatusNotFound)
 		} else {
-			logger.Info(fmt.Sprintf("failed to lookup URL: %v\n", err))
+			s.logger.Error("failed to lookup URL", "error", err)
 			http.Error(w, "internal server error", http.StatusInternalServerError)
 		}
 		return
@@ -82,7 +82,6 @@ func (s *server) handlerRedirect(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "destination unavailable", http.StatusBadGateway)
 		return
 	}
-
 	redirectsMu.Lock()
 	redirects = append(redirects, strings.Repeat(longURL, 1024))
 	redirectsMu.Unlock()
