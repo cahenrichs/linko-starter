@@ -54,7 +54,7 @@ func (s *server) start() error {
 	if !ok {
 		return fmt.Errorf("listener address is not a TCP address")
 	}
-	logger.Info(fmt.Sprintf("Linko is running on http://localhost:%d\n", tcpAddr.Port))
+	s.logger.Info(fmt.Sprintf("Linko is running on http://localhost:%d\n", tcpAddr.Port))
 	if err := s.httpServer.Serve(ln); !errors.Is(err, http.ErrServerClosed) {
 		return err
 	}
